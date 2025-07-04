@@ -1,0 +1,37 @@
+# YOLOv12n-Enhanced Simplified Configuration for License Plate Detection
+
+# Parameters
+nc: 4  # 车牌检测为单类别任务
+scales:
+  n: [0.50, 0.25, 1024]
+
+# Backbone with Attention Injection
+backbone:
+  # [from, repeats, module, args]
+  - [-1, 1, Conv, [64, 3, 2]]              # 0 - P1/2: 基础卷积
+  - [ -1, 1, ECA_Conv, [ 64, 128, 3, 2 ] ]
+
+  # 1 - P2/4: 融入ECA注意力的卷积层
+  - [ -1, 2, C3k2_CoordAtt, [ 256, 512 ] ]
+  # 2: 加入CoordAtt的C3k2模块
+  - [-1, 1, Conv, [256, 3, 2]]             # 3 - P3/8: 下采样卷积
+  - [-1, 2, C3k2_CoordAtt, [512]]          # 4: 加入CoordAtt的C3k2模块
+  - [-1, 1, FMA_Conv, [512, 3, 2]]          # 5 - P4/16: 融入FMA增强的卷积
+  - [-1, 4, A2C2f, [512, True, 4]]          # 6: 多分支特征融合模块
+  - [-1, 1, Conv, [1024, 3, 2]]             # 7 - P5/32: 下采样卷积
+  - [-1, 4, A2C2f, [1024, True, 1]]         # 8: 最后融合模块
+
+# Enhanced Detection Head
+head:
+  # 上采样路径：仅保留一条上采样路径，从P5上采样到P4
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 将P5特征上采样到P4尺寸
+  - [[-1, 6], 1, Concat, [1]]                    # 拼接上采样特征与Backbone层6的特征（P4级别）
+  - [-1, 1, A2C2f_FMA, [512]]                     # 对融合后的特征进行一次处理（减少重复次数，集成FMA）
+
+  # 下采样路径：将融合后的特征与深层特征进行融合
+  - [-1, 1, Conv, [512, 3, 2]]                    # 将当前特征下采样，进一步提取语义信息
+  - [[-1, 8], 1, Concat, [1]]                     # 拼接与Backbone层8的输出（P5级别）
+  - [-1, 2, C3k2_CoordAtt, [1024]]                # 使用加入CoordAtt的C3k2模块进行特征强化
+
+  # 改进检测头：使用PartialDetect模块处理局部区域检测
+  - [[11, 20], 1, PartialDetect, [nc]]           # 合并上采样分支（编号11）和深层特征（编号20），进行局部检测

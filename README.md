@@ -26,7 +26,7 @@ The proposed model is suitable for various object detection scenarios such as ag
 
 We provide the dataset used for training and evaluation at the link below:  
 👉 [Click to access dataset]
-(https://pan.baidu.com/s/1R4yCCy8wzooD_zWUW57rLw 提取码: 6666 )
+(https://pan.baidu.com/s/1R4yCCy8wzooD_zWUW57rLw  )
 
 The dataset includes training, validation, and test splits.
 
